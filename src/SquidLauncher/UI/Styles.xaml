@@ -40,6 +40,18 @@
 
     <CornerRadius x:Key="R">10</CornerRadius>
 
+    <!-- ========== 悬停高亮的淡入淡出 ==========
+         WPF 不能在 Trigger 里直接给 Background 补间（主题画刷是冻结的，改不了 Color），
+         所以悬停色改由一层「遮罩 Border」承担：压在基色之上、内容之下，只动它的 Opacity。
+         进 120ms / 出 200ms，都是 EaseOut：进场要快（手感即时），退场稍慢（不闪）。 -->
+    <CubicEase x:Key="HoverEase" EasingMode="EaseOut"/>
+    <Style x:Key="HoverVeil" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource AccentSoft}"/>
+        <Setter Property="Opacity" Value="0"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+    </Style>
+
     <!-- ========== 基础文字 ========== -->
     <Style TargetType="TextBlock" x:Key="H1">
         <Setter Property="FontSize" Value="18"/>
@@ -94,12 +106,22 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="b" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
-                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="False"/>
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" SnapsToDevicePixels="True">
+                        <Grid>
+                            <Border x:Name="hv" Style="{StaticResource HoverVeil}" CornerRadius="7"/>
+                            <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="False"/>
+                            </Border>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{DynamicResource AccentSoft}"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.ExitActions>
                             <Setter TargetName="b" Property="BorderBrush" Value="{DynamicResource AccentSoft2}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
@@ -123,12 +145,22 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="7" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
-                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="False"/>
+                    <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="7" SnapsToDevicePixels="True">
+                        <Grid>
+                            <Border x:Name="hv" Style="{StaticResource HoverVeil}" Background="{DynamicResource AccentHover}" CornerRadius="7"/>
+                            <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="False"/>
+                            </Border>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{DynamicResource AccentHover}"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="b" Property="Background" Value="{DynamicResource AccentPressed}"/>
@@ -150,12 +182,22 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="7,0,0,7" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False"/>
+                    <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="7,0,0,7" SnapsToDevicePixels="True">
+                        <Grid>
+                            <Border x:Name="hv" Style="{StaticResource HoverVeil}" Background="{DynamicResource AccentHover}" CornerRadius="7,0,0,7"/>
+                            <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False"/>
+                            </Border>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{DynamicResource AccentHover}"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="b" Property="Background" Value="{DynamicResource AccentPressed}"/>
@@ -174,12 +216,22 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="0,7,7,0" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False"/>
+                    <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="0,7,7,0" SnapsToDevicePixels="True">
+                        <Grid>
+                            <Border x:Name="hv" Style="{StaticResource HoverVeil}" Background="{DynamicResource AccentHover}" CornerRadius="0,7,7,0"/>
+                            <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False"/>
+                            </Border>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{DynamicResource AccentHover}"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="b" Property="Background" Value="{DynamicResource AccentPressed}"/>
@@ -199,12 +251,22 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="b" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
-                            CornerRadius="7" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False"/>
+                            CornerRadius="7" SnapsToDevicePixels="True">
+                        <Grid>
+                            <Border x:Name="hv" Style="{StaticResource HoverVeil}" Background="{DynamicResource DangerSoft}" CornerRadius="7"/>
+                            <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False"/>
+                            </Border>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{DynamicResource DangerSoft}"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.ExitActions>
                             <Setter TargetName="b" Property="BorderBrush" Value="{DynamicResource Danger}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -237,11 +299,19 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="b" Background="Transparent" CornerRadius="6">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Grid>
+                            <Border x:Name="hv" Style="{StaticResource HoverVeil}" Background="#33FFFFFF" CornerRadius="6"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="#33FFFFFF"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="b" Property="Background" Value="#55FFFFFF"/>
@@ -262,15 +332,25 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Border x:Name="b" Background="Transparent" CornerRadius="17" Padding="16,6">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="ic" Text="{TemplateBinding Tag}" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,1,7,0" Foreground="{TemplateBinding Foreground}"/>
-                            <ContentPresenter VerticalAlignment="Center"/>
-                        </StackPanel>
+                    <Border x:Name="b" Background="Transparent" CornerRadius="17">
+                        <Grid>
+                            <Border x:Name="hv" Style="{StaticResource HoverVeil}" Background="#26FFFFFF" CornerRadius="17"/>
+                            <Border Padding="16,6" Background="Transparent">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock x:Name="ic" Text="{TemplateBinding Tag}" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,1,7,0" Foreground="{TemplateBinding Foreground}"/>
+                                    <ContentPresenter VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="#26FFFFFF"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="b" Property="Background" Value="White"/>
@@ -292,17 +372,37 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Border x:Name="b" Background="Transparent" CornerRadius="8" Padding="12,9">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{TemplateBinding Tag}" FontFamily="{StaticResource Icons}" FontSize="14" VerticalAlignment="Center" Margin="0,1,10,0" Foreground="{TemplateBinding Foreground}"/>
-                            <ContentPresenter VerticalAlignment="Center"/>
-                        </StackPanel>
+                    <Border x:Name="b" Background="Transparent" CornerRadius="8">
+                        <Border.RenderTransform>
+                            <!-- 选中时整条向右突出 4px，见 IsChecked 触发器 -->
+                            <TranslateTransform x:Name="lift" X="0"/>
+                        </Border.RenderTransform>
+                        <Grid>
+                            <Border x:Name="hv" Style="{StaticResource HoverVeil}" Background="{DynamicResource CardHover}" CornerRadius="8"/>
+                            <Border Padding="12,9" Background="Transparent">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{TemplateBinding Tag}" FontFamily="{StaticResource Icons}" FontSize="14" VerticalAlignment="Center" Margin="0,1,10,0" Foreground="{TemplateBinding Foreground}"/>
+                                    <ContentPresenter VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{DynamicResource CardHover}"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="lift" Storyboard.TargetProperty="X" To="4" Duration="0:0:0.14" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="lift" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.16" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.ExitActions>
                             <Setter TargetName="b" Property="Background" Value="{DynamicResource AccentSoft}"/>
                             <Setter Property="Foreground" Value="{DynamicResource Accent}"/>
                             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -571,12 +671,22 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBoxItem">
-                    <Border x:Name="b" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter/>
+                    <Border x:Name="b" Background="Transparent" CornerRadius="6">
+                        <Grid>
+                            <Border x:Name="hv" Style="{StaticResource HoverVeil}" CornerRadius="6"/>
+                            <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                <ContentPresenter/>
+                            </Border>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{DynamicResource AccentSoft}"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter Property="Foreground" Value="{DynamicResource Accent}"/>
@@ -595,6 +705,8 @@
         <Setter Property="Foreground" Value="{DynamicResource Text}"/>
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
         <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel"/>
+        <!-- 回收容器：滚动时复用已有的 item 而不是反复 new，长篇列表（921 个版本）差别明显 -->
+        <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
         <Setter Property="ItemContainerStyle">
             <Setter.Value>
                 <Style TargetType="ListBoxItem">
@@ -606,13 +718,23 @@
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="ListBoxItem">
-                                <Border x:Name="b" Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="9" Padding="12,9">
-                                    <ContentPresenter/>
+                                <Border x:Name="b" Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="9">
+                                    <Grid>
+                                        <Border x:Name="hv" Style="{StaticResource HoverVeil}" Background="{DynamicResource CardHover}" CornerRadius="9"/>
+                                        <Border Padding="12,9" Background="Transparent">
+                                            <ContentPresenter/>
+                                        </Border>
+                                    </Grid>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.ExitActions>
                                         <Setter TargetName="b" Property="BorderBrush" Value="{DynamicResource AccentSoft2}"/>
-                                        <Setter TargetName="b" Property="Background" Value="{DynamicResource CardHover}"/>
                                     </Trigger>
                                     <Trigger Property="IsSelected" Value="True">
                                         <Setter TargetName="b" Property="BorderBrush" Value="{DynamicResource Accent}"/>
@@ -682,10 +804,24 @@
                             <Thumb>
                                 <Thumb.Template>
                                     <ControlTemplate TargetType="Thumb">
-                                        <Border x:Name="t" Background="{DynamicResource ScrollThumb}" CornerRadius="4" Margin="2,0"/>
+                                    <Grid Margin="2,0">
+                                        <Border x:Name="t" Background="{DynamicResource ScrollThumb}" CornerRadius="4"/>
+                                        <Border x:Name="hv" Style="{StaticResource HoverVeil}" Background="{DynamicResource ScrollThumbHover}" CornerRadius="4"/>
+                                    </Grid>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="t" Property="Background" Value="{DynamicResource ScrollThumbHover}"/>
+                                                <Trigger.EnterActions>
+                                                    <BeginStoryboard><Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="t" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/>
+                                                        <DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/>
+                                                    </Storyboard></BeginStoryboard>
+                                                </Trigger.EnterActions>
+                                                <Trigger.ExitActions>
+                                                    <BeginStoryboard><Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="t" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/>
+                                                        <DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/>
+                                                    </Storyboard></BeginStoryboard>
+                                                </Trigger.ExitActions>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -709,10 +845,24 @@
                                     <Thumb>
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Border x:Name="t" Background="{DynamicResource ScrollThumb}" CornerRadius="4" Margin="0,2"/>
+                                                <Grid Margin="0,2">
+                                                    <Border x:Name="t" Background="{DynamicResource ScrollThumb}" CornerRadius="4"/>
+                                                    <Border x:Name="hv" Style="{StaticResource HoverVeil}" Background="{DynamicResource ScrollThumbHover}" CornerRadius="4"/>
+                                                </Grid>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="t" Property="Background" Value="{DynamicResource ScrollThumbHover}"/>
+                                                        <Trigger.EnterActions>
+                                                            <BeginStoryboard><Storyboard>
+                                                                <DoubleAnimation Storyboard.TargetName="t" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/>
+                                                                <DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/>
+                                                            </Storyboard></BeginStoryboard>
+                                                        </Trigger.EnterActions>
+                                                        <Trigger.ExitActions>
+                                                            <BeginStoryboard><Storyboard>
+                                                                <DoubleAnimation Storyboard.TargetName="t" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/>
+                                                                <DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/>
+                                                            </Storyboard></BeginStoryboard>
+                                                        </Trigger.ExitActions>
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -818,12 +968,22 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
-                    <Border x:Name="b" Background="Transparent" CornerRadius="6" Padding="10,7">
-                        <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center"/>
+                    <Border x:Name="b" Background="Transparent" CornerRadius="6">
+                        <Grid>
+                            <Border x:Name="hv" Style="{StaticResource HoverVeil}" CornerRadius="6"/>
+                            <Border Padding="10,7" Background="Transparent">
+                                <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{DynamicResource AccentSoft}"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="hv" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.45"/>

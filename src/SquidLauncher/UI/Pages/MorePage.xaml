@@ -4,7 +4,7 @@
              xmlns:pages="clr-namespace:SquidLauncher.UI.Pages">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="170"/>
+            <ColumnDefinition Width="190"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 

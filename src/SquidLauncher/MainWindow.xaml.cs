@@ -33,6 +33,9 @@ namespace SquidLauncher
         MorePage _more;
         bool _deferredDone;
         bool _revealed;
+        bool _settlePlayed;
+        RotateTransform _settleRotate;
+        TranslateTransform _settleShift;
 
         // 四个主页面都是「第一次进那个标签页」才创建：XAML 解析 + 控件树构建都不便宜，
         // 启动时只建首页（启动页），其余等用户点过去再说
@@ -164,12 +167,74 @@ namespace SquidLauncher
                     SyncWindowBackground();
                 };
                 BeginAnimation(OpacityProperty, fade);
+                PlaySettleAnimation();
                 Log.Info("[启动] 界面已就绪，窗口开始显形（此前整体不可见，不会有白闪）");
             }
             catch (Exception ex)
             {
                 Log.Warn("窗口显形失败：" + ex.Message);
                 Opacity = 1;
+            }
+        }
+
+        /// <summary>
+        /// 「刚端上来、被扶正」的落定动画：先歪一点，阻尼摆动两次归零。
+        /// 抖的是内容层（Root 的 RenderTransform），不动 Window.Left/Top——不走窗口消息，
+        /// 多显示器/DPI 缩放下不会跳帧；Root 本身没设底色，旋转后四角露出的就是窗口主题底色，看不出来。
+        /// 与 140ms 淡入并行（t=0 起步），总共 300ms 内结束；只播一次，App 侧兜底重复调用 Reveal 时不重播。
+        /// </summary>
+        void PlaySettleAnimation()
+        {
+            if (_settlePlayed) return;
+            _settlePlayed = true;
+            try
+            {
+                if (_settleRotate == null)
+                {
+                    _settleRotate = new RotateTransform(0);
+                    _settleShift = new TranslateTransform(0, 0);
+                    var group = new TransformGroup();
+                    group.Children.Add(_settleRotate);
+                    group.Children.Add(_settleShift);
+                    Root.RenderTransformOrigin = new Point(0.5, 0.5);   // 绕窗口中心，不是绕底边
+                    Root.RenderTransform = group;
+                }
+
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                var ease = new KeySpline(0.4, 0, 0.6, 1);   // 每段都是「峰处慢、过零快」
+
+                // 旋转为主：0.35° 起手，阻尼萎缩到 0（两次可见回摆）
+                var angle = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(300) };
+                angle.KeyFrames.Add(new SplineDoubleKeyFrame(0.35, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(0)), ease));
+                angle.KeyFrames.Add(new SplineDoubleKeyFrame(-0.22, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(72)), ease));
+                angle.KeyFrames.Add(new SplineDoubleKeyFrame(0.12, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(148)), ease));
+                angle.KeyFrames.Add(new SplineDoubleKeyFrame(-0.05, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(218)), ease));
+                angle.KeyFrames.Add(new SplineDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(300)), ease));
+
+                // 位移为辅：峰值 2px，只为余韵，不作为主导
+                var shift = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(300) };
+                shift.KeyFrames.Add(new SplineDoubleKeyFrame(1.6, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(0)), ease));
+                shift.KeyFrames.Add(new SplineDoubleKeyFrame(-1.4, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(78)), ease));
+                shift.KeyFrames.Add(new SplineDoubleKeyFrame(0.9, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(154)), ease));
+                shift.KeyFrames.Add(new SplineDoubleKeyFrame(-0.4, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(222)), ease));
+                shift.KeyFrames.Add(new SplineDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(300)), ease));
+
+                // 动画结束把时钟摘掉、属性归零，别让 Transform 长期挂着动画时钟
+                angle.Completed += (s, e) =>
+                {
+                    _settleRotate.BeginAnimation(RotateTransform.AngleProperty, null);
+                    _settleShift.BeginAnimation(TranslateTransform.XProperty, null);
+                    _settleRotate.Angle = 0;
+                    _settleShift.X = 0;
+                    Log.Info($"[启动] 落定动画结束 {stopwatch.ElapsedMilliseconds}ms（旋转 0.35°→0，位移 2px→0）");
+                };
+
+                _settleRotate.BeginAnimation(RotateTransform.AngleProperty, angle);
+                _settleShift.BeginAnimation(TranslateTransform.XProperty, shift);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("落定动画失败：" + ex.Message);
             }
         }
 
@@ -200,12 +265,12 @@ namespace SquidLauncher
         {
             PageHost.Content = page;
             page.Opacity = 0;
-            var tt = new TranslateTransform(0, 10);
-            page.RenderTransform = tt;
             var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            // 纵向位移交给内容区卡片（ContentReveal），整页只留 180ms 淡入当底色，免得两层叠着一起下坠
             page.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180)) { EasingFunction = ease });
-            tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(10, 0, TimeSpan.FromMilliseconds(220)) { EasingFunction = ease });
             (page as IPage)?.OnShown();
+            SidebarReveal.Play(page);
+            ContentReveal.Play(page);
         }
 
         /// <summary>在当前标签页里打开子页面（有返回）</summary>

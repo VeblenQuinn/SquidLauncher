@@ -6,6 +6,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using SquidLauncher.Core;
 
 namespace SquidLauncher.UI
 {
@@ -22,17 +23,40 @@ namespace SquidLauncher.UI
     {
         /// <summary>一格滚轮滚动多少像素（约三行文字）</summary>
         const double WheelStep = 96;
-        /// <summary>动画时长：滚动距离越长给得越长，但有上下限</summary>
-        static readonly TimeSpan MinDuration = TimeSpan.FromMilliseconds(140);
-        static readonly TimeSpan MaxDuration = TimeSpan.FromMilliseconds(420);
+        /// <summary>动画时长：滚动距离越长给得越长，但有上下限（压短一点，滚起来跟手）</summary>
+        static readonly TimeSpan MinDuration = TimeSpan.FromMilliseconds(90);
+        static readonly TimeSpan MaxDuration = TimeSpan.FromMilliseconds(220);
 
         static bool _inited;
+
+        /// <summary>排查用：OL_SCROLL_TRACE=1 时把每次滚轮的起止值打进日志</summary>
+        static readonly bool Trace = Environment.GetEnvironmentVariable("OL_SCROLL_TRACE") == "1";
+
+        /// <summary>每个滚动区「这一串滚轮还想到哪」，连滚时在此累加</summary>
+        sealed class TargetBox
+        {
+            public double Target;      // 这一串滚轮最终想停的位置
+            public double From;        // 本次动画的起点
+            public bool Animating;     // 是否还有一段缓动在跑
+            public DoubleAnimation Current; // 当前这一段；旧段被顶掉后它的 Completed 不许再提交（否则会把位置拽回去）
+        }
+        static readonly ConditionalWeakTable<ScrollViewer, TargetBox> Targets =
+            new ConditionalWeakTable<ScrollViewer, TargetBox>();
 
         /// <summary>注册全局滚轮处理（幂等）</summary>
         public static void Init()
         {
             if (_inited) return;
             _inited = true;
+
+            // 排查用开关：OL_SMOOTH_SCROLL=0 关掉滚轮缓动，回到系统原生逐格滚动。
+            // 怀疑「卡顿」是缓动引起时，设这个变量重启对比一次就能定性。
+            if (Environment.GetEnvironmentVariable("OL_SMOOTH_SCROLL") == "0")
+            {
+                Log.Info("[滚动] OL_SMOOTH_SCROLL=0，滚轮缓动已关闭");
+                return;
+            }
+
             EventManager.RegisterClassHandler(typeof(ScrollViewer), UIElement.PreviewMouseWheelEvent,
                 new MouseWheelEventHandler(OnPreviewWheel), true);
         }
@@ -115,13 +139,33 @@ namespace SquidLauncher.UI
             // 按住 Shift / Ctrl 时保留原行为（横向滚动、缩放等）
             if ((Keyboard.Modifiers & (ModifierKeys.Shift | ModifierKeys.Control)) != 0) return;
 
-            double target = current - e.Delta / 120.0 * WheelStep;
-            AnimateTo(sv, target);
+            var box = Targets.GetOrCreateValue(sv);
+
+            // 动画期间真实偏移跑出了 [起点, 目标] 区间 → 位置是被别的东西改的
+            // （拖滚动条、代码跳转、内容高度变化），这一串滚轮作废，从当前位置重新起算。
+            if (box.Animating &&
+                (current < Math.Min(box.From, box.Target) - 2 || current > Math.Max(box.From, box.Target) + 2))
+                box.Animating = false;
+
+            // 没有正在跑的缓动：从当前真实偏移起算。
+            // 有的话：在「上一格的目标」上继续加，绝不拿当前帧位置当基准反推出更小的目标 ——
+            // 那会让动画半路掉头往回走，表现就是「滚一下又弹回来」。
+            if (!box.Animating) box.Target = current;
+
+            double target = Math.Max(0, Math.Min(max, box.Target - e.Delta / 120.0 * WheelStep));
+            box.From = current;
+            box.Target = target;
+            box.Animating = true;
+            if (Trace) Log.Info(string.Format("[滚动] 格 {0,4} 当前 {1:0.0} → 目标 {2:0.0}（上限 {3:0.0}）", e.Delta, current, target, max));
+            Animate(sv, target, null, box);
             e.Handled = true;
         }
 
         /// <summary>平滑滚动到指定偏移（超出范围会自动夹到合法区间）</summary>
         public static void AnimateTo(ScrollViewer sv, double offset, TimeSpan? duration = null)
+            => Animate(sv, offset, duration, null);
+
+        static void Animate(ScrollViewer sv, double offset, TimeSpan? duration, TargetBox box)
         {
             if (sv == null) return;
             double max = Math.Max(0, sv.ScrollableHeight);
@@ -134,6 +178,7 @@ namespace SquidLauncher.UI
             sv.SetValue(OffsetProperty, from);
             sv.BeginAnimation(OffsetProperty, null);
 
+            if (box != null) { box.From = from; box.Target = to; box.Animating = distance >= 0.5; }
             if (distance < 0.5) return;
 
             var span = duration ?? TimeSpan.FromMilliseconds(
@@ -145,6 +190,26 @@ namespace SquidLauncher.UI
                 // 停在终点：动画结束后 VerticalOffset 就是 to，不会回弹
                 FillBehavior = FillBehavior.HoldEnd,
             };
+
+            // 动画跑完就撤掉时钟、把终点写回基础值。
+            // 留着 HoldEnd 的时钟会一直揪住旧偏移：之后拖滚动条 / 窗口重新布局 / 切页时
+            // 它会把位置又拽回去，表现就是滚动「黏住、卡一下」。
+            anim.Completed += (s, o) =>
+            {
+                // 被后来的一段顶掉的旧动画也会触发 Completed。它提交的是过期位置，
+                // 还会顺手把新动画撤掉 —— 表现就是「滚到一半往回跳」。这里直接无视。
+                if (box != null && !ReferenceEquals(box.Current, anim)) return;
+
+                // 提交真实偏移而不是 to：ScrollToVerticalOffset 每帧都会把越界值夹回合法范围，
+                // to 有可能比真实可达位置大，直接写 to 再撤时钟，画面会往回跳一下（回弹）。
+                double real = CurrentOffset(sv);
+                sv.SetValue(OffsetProperty, real);
+                sv.BeginAnimation(OffsetProperty, null);
+                if (Trace) Log.Info(string.Format("[滚动] 停 {0:0.0}（请求 {1:0.0}）", real, to));
+                if (box != null) { box.Target = real; box.Animating = false; box.Current = null; }
+            };
+
+            if (box != null) box.Current = anim;
             sv.BeginAnimation(OffsetProperty, anim);
         }
 

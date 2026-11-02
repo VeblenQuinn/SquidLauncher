@@ -28,6 +28,7 @@ namespace SquidLauncher.UI.Pages
             if (sender == NavGame) Host.Content = _game ?? (_game = new GameListView());
             else Host.Content = View(TypeOf(sender));
             (Host.Content as IPage)?.OnShown();
+            ContentReveal.PlaySwap(Host.Content as FrameworkElement);   // 页内换内容只淡入，不做位移
         }
 
         ContentType TypeOf(object nav) =>

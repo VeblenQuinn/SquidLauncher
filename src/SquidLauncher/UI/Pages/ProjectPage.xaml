@@ -50,9 +50,7 @@
                                         <Style TargetType="Border">
                                             <Setter Property="Background" Value="Transparent"/>
                                             <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="{DynamicResource AccentSoft}"/>
-                                                </Trigger>
+                                                <!-- 鼠标悬停走下面遮罩层的淡入淡出；键盘焦点仍是即时高亮（键盘操作不需要渐变） -->
                                                 <Trigger Property="IsKeyboardFocusWithin" Value="True">
                                                     <Setter Property="Background" Value="{DynamicResource AccentSoft}"/>
                                                 </Trigger>
@@ -64,6 +62,24 @@
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
+                                        <Border Grid.ColumnSpan="2" CornerRadius="8" Background="{DynamicResource AccentSoft}"
+                                                IsHitTestVisible="False" SnapsToDevicePixels="True">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Opacity" Value="0"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}" Value="True">
+                                                            <DataTrigger.EnterActions>
+                                                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                                                            </DataTrigger.EnterActions>
+                                                            <DataTrigger.ExitActions>
+                                                                <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" EasingFunction="{StaticResource HoverEase}"/></Storyboard></BeginStoryboard>
+                                                            </DataTrigger.ExitActions>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                        </Border>
                                         <Border Width="34" Height="34" CornerRadius="8" Background="{DynamicResource AccentSoft}" ClipToBounds="True" VerticalAlignment="Center">
                                             <Image ui:RemoteImage.Url="{Binding IconUrl}" Stretch="UniformToFill"/>
                                         </Border>
